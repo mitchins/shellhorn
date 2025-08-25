@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "shellhorn"
-version = "0.1.0"
+version = "0.2.0"
 description = "🐚📯 A lightweight command wrapper that sounds the horn when your shell commands complete, fail, or die unexpectedly"
 authors = [{name = "Mitchell Currie"}]
 license = {text = "MIT"}
