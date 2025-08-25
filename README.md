@@ -1,4 +1,4 @@
-# Shellhorn 🐚📯
+# Shellhorn
 
 **Get phone notifications when your long-running shell commands finish.** Perfect for ML training, builds, or any command you don't want to babysit.
 
@@ -6,10 +6,10 @@
 pip install shellhorn
 
 # Just prepend any command
-shellhorn python3 my-training-script.py  # 📱 Get notified when done
+shellhorn python3 my-training-script.py  # Get notified when done
 ```
 
-## ⚡ Quick Setup
+## Quick Setup
 
 **Pushover (phone notifications):**
 ```bash
@@ -29,7 +29,7 @@ shellhorn config set notifications.mqtt.enabled true
 shellhorn config test  # Sends test notification
 ```
 
-## 🚀 Usage
+## Usage
 
 ```bash
 # Any command works - just prepend with shellhorn
@@ -43,13 +43,13 @@ conch python3 script.py
 ```
 
 **What you get:**
-- ✅ Success notifications with duration
-- ❌ Failure alerts with exit codes  
-- ⚠️ Orphaned process detection (via MQTT monitor)
-- 🔧 Works with pipes, redirects, and complex commands
-- 🤫 **Start notifications disabled by default** (you know when you started it!)
+- Success notifications with duration
+- Failure alerts with exit codes  
+- Orphaned process detection (via MQTT monitor)
+- Works with pipes, redirects, and complex commands
+- **Start notifications disabled by default** (you know when you started it!)
 
-## 📚 More Options
+## More Options
 
 <details>
 <summary><b>Environment Variables</b> (alternative to config commands)</summary>
