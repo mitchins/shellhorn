@@ -1,170 +1,109 @@
-# Conch 🐚
+# Shellhorn 🐚📯
 
-A lightweight command wrapper with notification and monitoring capabilities. Perfect for long-running commands that you want to be notified about when they complete.
-
-## Features
-
-- **Command Wrapping**: Prepend any command with `conch` to monitor it
-- **Pushover Notifications**: Get notified on your phone when commands complete
-- **MQTT Monitoring**: Centralized monitoring via MQTT for lightweight distributed setups
-- **Failure Detection**: Automatic notification when commands fail unexpectedly
-- **Simple Configuration**: Easy setup via config file or environment variables
-
-## Installation
+**Get phone notifications when your long-running shell commands finish.** Perfect for ML training, builds, or any command you don't want to babysit.
 
 ```bash
-cd conch
-pip install -e .
+pip install shellhorn
+
+# Just prepend any command
+shellhorn python3 my-training-script.py  # 📱 Get notified when done
 ```
 
-## Quick Start
+## ⚡ Quick Setup
 
-### Basic Usage
+**Pushover (phone notifications):**
 ```bash
-# Wrap any command
-conch python3 my-long-training-script.py
-conch make build
-conch npm test
+shellhorn config set notifications.pushover.app_token YOUR_TOKEN
+shellhorn config set notifications.pushover.user_key YOUR_USER  
+shellhorn config set notifications.pushover.enabled true
 ```
 
-### With Pushover Notifications
+**MQTT (centralized monitoring):**
 ```bash
-# Set up Pushover (one time)
-conch config set pushover.app_token YOUR_APP_TOKEN
-conch config set pushover.user_key YOUR_USER_KEY  
-conch config set pushover.enabled true
-
-# Now all commands will send notifications
-conch python3 training.py
+shellhorn config set notifications.mqtt.broker_host mqtt.example.com
+shellhorn config set notifications.mqtt.enabled true
 ```
 
-### With MQTT Monitoring
+**Test it:**
 ```bash
-# Set up MQTT (one time)
-conch config set mqtt.broker_host mqtt.example.com
-conch config set mqtt.enabled true
-
-# Commands will publish status to MQTT
-conch ./long-running-process.sh
+shellhorn config test  # Sends test notification
 ```
 
-## Configuration
-
-### Config File
-Configuration is stored in `~/.config/conch/config.json`:
-
-```json
-{
-  "notifications": {
-    "pushover": {
-      "enabled": true,
-      "app_token": "your_app_token",
-      "user_key": "your_user_key",
-      "device": null
-    },
-    "mqtt": {
-      "enabled": true,
-      "broker_host": "localhost",
-      "broker_port": 1883,
-      "topic_prefix": "conch",
-      "username": null,
-      "password": null
-    },
-    "console": {
-      "enabled": false
-    }
-  }
-}
-```
-
-### Environment Variables
-You can also configure via environment variables:
+## 🚀 Usage
 
 ```bash
-export CONCH_PUSHOVER_TOKEN=your_app_token
-export CONCH_PUSHOVER_USER=your_user_key
-export CONCH_MQTT_BROKER=mqtt.example.com
-export CONCH_CONSOLE_NOTIFICATIONS=true
+# Any command works - just prepend with shellhorn
+shellhorn make build && make test
+shellhorn ./deploy-script.sh
+shellhorn python3 -m pytest --long-running-tests
+shellhorn npm run build
 
+# Short alias
 conch python3 script.py
 ```
 
-### CLI Options
-Override config on-the-fly:
+**What you get:**
+- ✅ Success notifications with duration
+- ❌ Failure alerts with exit codes  
+- ⚠️ Orphaned process detection (via MQTT monitor)
+- 🔧 Works with pipes, redirects, and complex commands
+- 🤫 **Start notifications disabled by default** (you know when you started it!)
+
+## 📚 More Options
+
+<details>
+<summary><b>Environment Variables</b> (alternative to config commands)</summary>
 
 ```bash
-conch --pushover-token=xxx --pushover-user=yyy python3 script.py
-conch --mqtt-broker=localhost --console-notifications python3 script.py
+export SHELLHORN_PUSHOVER_TOKEN=your_app_token
+export SHELLHORN_PUSHOVER_USER=your_user_key
+export SHELLHORN_MQTT_BROKER=mqtt.example.com
 ```
+</details>
 
-## Commands
+<details>
+<summary><b>CLI Override</b> (one-time config)</summary>
 
-### Configuration Management
 ```bash
-# Show current config
-conch config show
-
-# Set configuration values
-conch config set pushover.app_token abc123
-conch config set mqtt.broker_host localhost
-conch config set pushover.enabled true
-
-# Test notifications
-conch config test
+shellhorn --pushover-token=xxx --pushover-user=yyy python3 script.py
+shellhorn --mqtt-broker=localhost python3 script.py
 ```
+</details>
 
-### Version
+<details>
+<summary><b>Config Commands</b></summary>
+
 ```bash
-conch version
+shellhorn config show        # View current config
+shellhorn config test        # Test notifications
+shellhorn --version          # Show version
+
+# Notification preferences (start notifications off by default)
+shellhorn config set preferences.notify_start true    # Enable start notifications
+shellhorn config set preferences.notify_success false # Disable success notifications
 ```
+</details>
 
-## MQTT Topics
+<details>
+<summary><b>MQTT Details</b></summary>
 
-When MQTT monitoring is enabled, conch publishes to these topics:
+**Topics:**
+- `shellhorn/start` - Command started
+- `shellhorn/complete` - Command finished
+- `shellhorn/error` - Unexpected errors  
+- `shellhorn/interrupt` - Interrupted (Ctrl+C)
 
-- `conch/start` - Command started
-- `conch/complete` - Command completed (success or failure)
-- `conch/error` - Unexpected errors
-- `conch/interrupt` - Command interrupted (Ctrl+C)
-
-Message format:
+**Message format:**
 ```json
 {
   "command": "python3 script.py",
-  "status": "success",
+  "status": "success", 
   "duration": 123.45,
-  "timestamp": "2024-01-01T12:00:00",
-  "client_id": "conch_123456789"
+  "client_id": "shellhorn_123456789"
 }
 ```
+</details>
 
-## Examples
+---
 
-### Machine Learning Training
-```bash
-# Get notified when training completes
-conch python3 train_model.py --epochs 100
-```
-
-### Build Systems
-```bash
-# Monitor CI/CD pipeline steps
-conch make clean
-conch make build
-conch make test
-conch make deploy
-```
-
-### Data Processing
-```bash
-# Long-running data pipeline
-conch python3 process_large_dataset.py
-```
-
-## Why "Conch"?
-
-- **Shell** reference (command wrapper)
-- **Echo** functionality (notifications)  
-- **Listen** for completion (monitoring)
-
-Plus, conch shells are beautiful and make sounds when you listen to them! 🐚# shellhorn
+*Perfect for ML training, CI/CD pipelines, data processing, or any command you don't want to babysit. The name "Shellhorn" comes from **shell** (command wrapper) + **horn** (notification alerts) 🐚📯*
