@@ -1,0 +1,32 @@
+[flake8]
+max-line-length = 88
+extend-ignore = E203, W503
+exclude = 
+    .git,
+    __pycache__,
+    dist,
+    build,
+    *.egg-info,
+    venv,
+    *_env,
+per-file-ignores =
+    # Allow unused imports in __init__.py files
+    __init__.py:F401
+    # Test files can have unused fixtures
+    tests/*:F401,F811
+select = 
+    # Default flake8 rules
+    E,W,F,
+    # Bugbear rules
+    B,
+    # Specific important rules
+    B001,  # Do not use bare `except:`, it also catches `SystemExit` and `KeyboardInterrupt`
+    B002,  # Python does not support the unary prefix increment
+    B003,  # Assigning to `os.environ` doesn't clear the environment
+    B004,  # `hasattr(x, '__call__')` should be `callable(x)`
+    B005,  # Using .strip() with multi-character strings is misleading
+    B006,  # Do not use mutable data structures for argument defaults
+    B007,  # Loop control variable not used within the loop body
+    B008,  # Do not perform function calls in argument defaults
+    B009,  # Do not call getattr with a constant attribute value
+    B010,  # Do not call setattr with a constant attribute value
