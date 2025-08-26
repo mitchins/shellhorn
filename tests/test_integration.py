@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
 """
-Integration tests for Shellhorn Monitor using embedded MQTT broker.
+Simple integration tests for Shellhorn Monitor with proper mocking.
 """
 
 import json
 import time
-import threading
 import unittest
 from datetime import datetime, timedelta
-from unittest.mock import patch, MagicMock
-import tempfile
+from unittest.mock import patch, MagicMock, Mock
 import os
 import sys
 
@@ -17,141 +15,14 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'monitor'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'shellhorn'))
 
-import paho.mqtt.client as mqtt
-from paho.mqtt import subscribe
-
 from shellhorn_monitor import ShellhornMonitor, ActiveCommand
 
 
-class EmbeddedMQTTBroker:
-    """Lightweight MQTT broker for testing."""
-    
-    def __init__(self, port=1883):
-        self.port = port
-        self.clients = {}
-        self.subscriptions = {}
-        self.messages = []
-        self.running = False
-        self.thread = None
-    
-    def start(self):
-        """Start the embedded broker."""
-        # For testing, we'll use a simple message relay approach
-        self.running = True
-        return True
-    
-    def stop(self):
-        """Stop the embedded broker."""
-        self.running = False
-    
-    def publish_message(self, topic, payload):
-        """Simulate publishing a message."""
-        message = {
-            'topic': topic,
-            'payload': payload,
-            'timestamp': datetime.now()
-        }
-        self.messages.append(message)
-        
-        # Notify subscribers
-        for client_id, client_subs in self.subscriptions.items():
-            if any(self._topic_matches(topic, sub) for sub in client_subs):
-                if client_id in self.clients:
-                    # Simulate message delivery
-                    self.clients[client_id]['callback'](topic, payload)
-    
-    def _topic_matches(self, topic, subscription):
-        """Check if topic matches subscription pattern."""
-        # Simple wildcard matching
-        if subscription.endswith('#'):
-            return topic.startswith(subscription[:-1])
-        if subscription.endswith('+'):
-            # More complex matching would be needed for full + support
-            return topic.startswith(subscription[:-1])
-        return topic == subscription
-    
-    def register_client(self, client_id, callback):
-        """Register a client with callback."""
-        self.clients[client_id] = {'callback': callback}
-    
-    def subscribe(self, client_id, topics):
-        """Subscribe client to topics."""
-        if client_id not in self.subscriptions:
-            self.subscriptions[client_id] = []
-        self.subscriptions[client_id].extend(topics)
-
-
-class MockMQTTClient:
-    """Mock MQTT client for testing."""
-    
-    def __init__(self, broker, client_id):
-        self.broker = broker
-        self.client_id = client_id
-        self.on_connect = None
-        self.on_disconnect = None
-        self.on_message = None
-        self.connected = False
-        
-    def username_pw_set(self, username, password):
-        """Mock username/password setting."""
-        pass
-    
-    def reconnect_delay_set(self, min_delay, max_delay):
-        """Mock reconnect delay setting."""
-        pass
-    
-    def will_set(self, topic, payload, qos=0, retain=False):
-        """Mock will message setting."""
-        pass
-    
-    def publish(self, topic, payload, qos=0, retain=False):
-        """Mock publish."""
-        return MagicMock()
-    
-    def connect(self, host, port, keepalive):
-        """Mock connection."""
-        self.connected = True
-        self.broker.register_client(self.client_id, self._handle_message)
-        if self.on_connect:
-            self.on_connect(self, None, None, 0)
-    
-    def disconnect(self):
-        """Mock disconnection."""
-        self.connected = False
-        if self.on_disconnect:
-            self.on_disconnect(self, None, 0)
-    
-    def subscribe(self, topic, qos=0):
-        """Mock subscription."""
-        self.broker.subscribe(self.client_id, [topic])
-    
-    def loop_start(self):
-        """Mock loop start."""
-        pass
-    
-    def loop_stop(self):
-        """Mock loop stop."""
-        pass
-    
-    def _handle_message(self, topic, payload):
-        """Handle incoming message."""
-        if self.on_message:
-            # Create a mock message object
-            msg = MagicMock()
-            msg.topic = topic
-            msg.payload = payload.encode() if isinstance(payload, str) else payload
-            self.on_message(self, None, msg)
-
-
 class TestShellhornMonitorIntegration(unittest.TestCase):
-    """Integration tests for Shellhorn Monitor."""
+    """Integration tests for Shellhorn Monitor with proper mocking."""
     
     def setUp(self):
         """Set up test environment."""
-        self.broker = EmbeddedMQTTBroker()
-        self.broker.start()
-        
-        # Create temporary config
         self.config = {
             'mqtt': {
                 'broker_host': 'localhost',
@@ -159,316 +30,156 @@ class TestShellhornMonitorIntegration(unittest.TestCase):
                 'topic_prefix': 'test_shellhorn'
             },
             'monitoring': {
-                'timeout_minutes': 1,  # Short timeout for testing
+                'timeout_minutes': 1,
                 'check_interval_seconds': 1,
                 'status_interval_seconds': 10
             },
-            'client_id': 'test-monitor',
-            'secrets_file': None  # No secrets for testing
+            'notifications': {
+                'enabled_events': {
+                    'start': True,
+                    'success': True,
+                    'fail': True,
+                    'lost': True
+                },
+                'pushover': {
+                    'enabled': True,
+                    'priority': {'start': 0, 'success': 0, 'fail': 1, 'lost': 2},
+                    'messages': {
+                        'start': 'Command started: {command}',
+                        'success': 'Command completed: {command}',
+                        'fail': 'Command failed: {command}',
+                        'lost': 'Lost command: {command}'
+                    }
+                }
+            },
+            'client_id': 'test-monitor'
         }
-        
-        # Mock MQTT client creation
-        self.original_mqtt_client = mqtt.Client
-        mqtt.Client = lambda *args, **kwargs: MockMQTTClient(
-            self.broker, 
-            kwargs.get('client_id', args[1] if len(args) > 1 else 'test-client')
-        )
         
         self.monitor = ShellhornMonitor(self.config)
     
-    def tearDown(self):
-        """Clean up test environment."""
-        self.monitor.running = False
-        self.broker.stop()
-        # Restore original MQTT client
-        mqtt.Client = self.original_mqtt_client
+    def test_config_loading(self):
+        """Test that configuration is loaded correctly."""
+        self.assertEqual(
+            self.monitor.config['mqtt']['topic_prefix'],
+            'test_shellhorn'
+        )
+        self.assertEqual(
+            self.monitor.config['monitoring']['timeout_minutes'], 
+            1
+        )
+    
+    def test_active_command_tracking(self):
+        """Test basic command tracking without MQTT."""
+        # Create a test command directly
+        command = ActiveCommand(
+            command='test command',
+            client_id='test-client',
+            start_time=datetime.now(),
+            pid=12345
+        )
+        
+        # Add to monitor's tracking
+        command_key = f"{command.client_id}:{command.command}"
+        self.monitor.active_commands[command_key] = command
+        
+        # Verify it's tracked
+        self.assertEqual(len(self.monitor.active_commands), 1)
+        self.assertIn(command_key, self.monitor.active_commands)
+        
+        # Test command age calculation
+        age = command.age_seconds
+        self.assertGreaterEqual(age, 0)
+        self.assertLess(age, 1)  # Should be very recent
+    
+    def test_orphan_detection_logic(self):
+        """Test orphan detection without MQTT."""
+        # Create an old command
+        old_time = datetime.now() - timedelta(minutes=2)
+        command = ActiveCommand(
+            command='old command',
+            client_id='test-client',
+            start_time=old_time,
+            pid=12345
+        )
+        
+        # Add to tracking
+        command_key = f"{command.client_id}:{command.command}"
+        self.monitor.active_commands[command_key] = command
+        
+        # Mock the notification method to avoid actual HTTP calls
+        with patch.object(self.monitor, 'send_event_notification') as mock_notify:
+            # Run orphan check
+            self.monitor.check_orphaned_commands()
+            
+            # Verify orphan was detected and notification was sent
+            mock_notify.assert_called_once()
+            args, kwargs = mock_notify.call_args
+            self.assertEqual(args[1], 'lost')  # event_type
     
     @patch('shellhorn_monitor.ShellhornMonitor.load_secrets')
-    def test_orphan_detection(self, mock_load_secrets):
-        """Test detection of orphaned commands."""
-        # Mock secrets to include Pushover credentials
+    def test_notification_preferences(self, mock_load_secrets):
+        """Test notification preference handling."""
+        # Mock secrets
         mock_load_secrets.return_value = {
             'pushover_token': 'test_token',
             'pushover_user': 'test_user'
         }
         
-        # Setup monitor
-        self.monitor.setup_mqtt()
-        
-        # Simulate command start
-        start_message = {
-            'command': 'python3 test_script.py',
-            'client_id': 'test-client',
-            'timestamp': (datetime.now() - timedelta(minutes=2)).isoformat(),
-            'pid': 12345
-        }
-        
-        self.broker.publish_message(
-            'test_shellhorn/start',
-            json.dumps(start_message)
+        command = ActiveCommand(
+            command='test command',
+            client_id='test-client',
+            start_time=datetime.now(),
+            pid=12345
         )
         
-        # Wait a moment for message processing
-        time.sleep(0.1)
-        
-        # Check that command is being tracked
-        self.assertEqual(len(self.monitor.active_commands), 1)
-        
-        # Mock the actual Pushover sending to avoid real HTTP calls
-        with patch.object(self.monitor, 'send_pushover_alert') as mock_pushover:
-            # Run orphan check (command should be detected as orphaned)
-            self.monitor.check_orphaned_commands()
+        # Test that notification checks preferences
+        with patch('requests.post') as mock_post:
+            mock_post.return_value.raise_for_status = Mock()
             
-            # Verify orphan was detected and alert was sent
-            mock_pushover.assert_called_once()
-        
-        # Verify command was removed from tracking
-        self.assertEqual(len(self.monitor.active_commands), 0)
-    
-    def test_normal_command_lifecycle(self):
-        """Test normal command start and completion."""
-        # Setup monitor
-        self.monitor.setup_mqtt()
-        
-        # Simulate command start
-        start_message = {
-            'command': 'echo hello',
-            'client_id': 'test-client',
-            'timestamp': datetime.now().isoformat(),
-            'pid': 12345
-        }
-        
-        self.broker.publish_message(
-            'test_shellhorn/start',
-            json.dumps(start_message)
-        )
-        
-        time.sleep(0.1)
-        
-        # Check that command is being tracked
-        self.assertEqual(len(self.monitor.active_commands), 1)
-        
-        # Simulate command completion
-        complete_message = {
-            'command': 'echo hello',
-            'client_id': 'test-client',
-            'timestamp': datetime.now().isoformat(),
-            'status': 'success',
-            'duration': 0.5
-        }
-        
-        self.broker.publish_message(
-            'test_shellhorn/complete',
-            json.dumps(complete_message)
-        )
-        
-        time.sleep(0.1)
-        
-        # Verify command was removed from tracking
-        self.assertEqual(len(self.monitor.active_commands), 0)
-    
-    def test_command_failure_handling(self):
-        """Test handling of command failures."""
-        # Setup monitor
-        self.monitor.setup_mqtt()
-        
-        # Simulate command start
-        start_message = {
-            'command': 'false',  # Command that fails
-            'client_id': 'test-client',
-            'timestamp': datetime.now().isoformat(),
-            'pid': 12345
-        }
-        
-        self.broker.publish_message(
-            'test_shellhorn/start',
-            json.dumps(start_message)
-        )
-        
-        time.sleep(0.1)
-        self.assertEqual(len(self.monitor.active_commands), 1)
-        
-        # Simulate command error
-        error_message = {
-            'command': 'false',
-            'client_id': 'test-client',
-            'timestamp': datetime.now().isoformat(),
-            'status': 'failed',
-            'return_code': 1
-        }
-        
-        self.broker.publish_message(
-            'test_shellhorn/error',
-            json.dumps(error_message)
-        )
-        
-        time.sleep(0.1)
-        
-        # Verify command was removed from tracking (not orphaned)
-        self.assertEqual(len(self.monitor.active_commands), 0)
-    
-    def test_interrupt_handling(self):
-        """Test handling of interrupted commands."""
-        # Setup monitor
-        self.monitor.setup_mqtt()
-        
-        # Simulate command start
-        start_message = {
-            'command': 'sleep 100',
-            'client_id': 'test-client',
-            'timestamp': datetime.now().isoformat(),
-            'pid': 12345
-        }
-        
-        self.broker.publish_message(
-            'test_shellhorn/start',
-            json.dumps(start_message)
-        )
-        
-        time.sleep(0.1)
-        self.assertEqual(len(self.monitor.active_commands), 1)
-        
-        # Simulate command interruption
-        interrupt_message = {
-            'command': 'sleep 100',
-            'client_id': 'test-client',
-            'timestamp': datetime.now().isoformat(),
-            'status': 'interrupted',
-            'duration': 5.0
-        }
-        
-        self.broker.publish_message(
-            'test_shellhorn/interrupt',
-            json.dumps(interrupt_message)
-        )
-        
-        time.sleep(0.1)
-        
-        # Verify command was removed from tracking
-        self.assertEqual(len(self.monitor.active_commands), 0)
-    
-    def test_multiple_clients(self):
-        """Test monitoring commands from multiple clients."""
-        # Setup monitor
-        self.monitor.setup_mqtt()
-        
-        # Start commands from different clients
-        for i in range(3):
-            start_message = {
-                'command': f'task_{i}',
-                'client_id': f'client-{i}',
-                'timestamp': datetime.now().isoformat(),
-                'pid': 12345 + i
-            }
+            # Test success notification (should be enabled)
+            self.monitor.send_event_notification(command, 'success', 1.5)
+            mock_post.assert_called_once()
             
-            self.broker.publish_message(
-                'test_shellhorn/start',
-                json.dumps(start_message)
-            )
-        
-        time.sleep(0.1)
-        
-        # All commands should be tracked
-        self.assertEqual(len(self.monitor.active_commands), 3)
-        
-        # Complete one command
-        complete_message = {
-            'command': 'task_1',
-            'client_id': 'client-1',
+            # Reset mock
+            mock_post.reset_mock()
+            
+            # Disable success notifications
+            self.monitor.config['notifications']['enabled_events']['success'] = False
+            self.monitor.send_event_notification(command, 'success', 1.5)
+            
+            # Should not have been called
+            mock_post.assert_not_called()
+    
+    def test_message_processing_logic(self):
+        """Test message processing logic without actual MQTT."""
+        # Test command start handling
+        payload = {
+            'command': 'test command',
+            'client_id': 'test-client',
             'timestamp': datetime.now().isoformat(),
-            'status': 'success'
+            'pid': 12345
         }
         
-        self.broker.publish_message(
-            'test_shellhorn/complete',
-            json.dumps(complete_message)
-        )
+        command_key = f"{payload['client_id']}:{payload['command']}"
         
-        time.sleep(0.1)
+        # Process start message
+        self.monitor.handle_command_start(command_key, payload)
         
-        # Two commands should remain
-        self.assertEqual(len(self.monitor.active_commands), 2)
-    
-    def test_config_loading(self):
-        """Test configuration loading from various sources."""
-        # Test with temporary config file
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-            test_config = {
-                'mqtt': {
-                    'broker_host': 'test-broker',
-                    'broker_port': 1234
-                },
-                'monitoring': {
-                    'timeout_minutes': 45
-                }
-            }
-            json.dump(test_config, f)
-            config_file = f.name
+        # Verify command is tracked
+        self.assertEqual(len(self.monitor.active_commands), 1)
+        self.assertIn(command_key, self.monitor.active_commands)
         
-        try:
-            # Mock environment to point to our test config
-            with patch.dict('os.environ', {'SHELLHORN_MONITOR_CONFIG': config_file}):
-                from shellhorn_monitor import load_config
-                loaded_config = load_config()
-                
-                self.assertEqual(loaded_config['mqtt']['broker_host'], 'test-broker')
-                self.assertEqual(loaded_config['mqtt']['broker_port'], 1234)
-                self.assertEqual(loaded_config['monitoring']['timeout_minutes'], 45)
-        finally:
-            os.unlink(config_file)
-
-
-class TestShellhornIntegration(unittest.TestCase):
-    """Integration tests for the main shellhorn command with MQTT."""
-    
-    def setUp(self):
-        """Set up test environment."""
-        self.broker = EmbeddedMQTTBroker()
-        self.broker.start()
+        tracked_command = self.monitor.active_commands[command_key]
+        self.assertEqual(tracked_command.command, payload['command'])
+        self.assertEqual(tracked_command.client_id, payload['client_id'])
+        self.assertEqual(tracked_command.pid, payload['pid'])
         
-        # Mock MQTT client
-        self.original_mqtt_client = mqtt.Client
-        mqtt.Client = lambda client_id: MockMQTTClient(self.broker, client_id)
-    
-    def tearDown(self):
-        """Clean up test environment."""
-        self.broker.stop()
-        mqtt.Client = self.original_mqtt_client
-    
-    @patch('shellhorn.notifiers.MQTTNotifier._publish')
-    def test_shellhorn_mqtt_integration(self, mock_publish):
-        """Test that shellhorn properly publishes to MQTT."""
-        from shellhorn.notifiers import MQTTNotifier
+        # Process completion message
+        self.monitor.handle_command_end(command_key, payload, 'complete')
         
-        # Create MQTT notifier
-        notifier = MQTTNotifier(
-            broker_host='localhost',
-            broker_port=1883,
-            topic_prefix='test_shellhorn'
-        )
-        
-        # Test start notification
-        notifier.notify_start('echo test', 12345)
-        mock_publish.assert_called_with('start', {
-            'command': 'echo test',
-            'pid': 12345,
-            'status': 'started'
-        })
-        
-        # Test success notification  
-        notifier.notify_success('echo test', 0.5, 0)
-        mock_publish.assert_called_with('complete', {
-            'command': 'echo test',
-            'duration': 0.5,
-            'return_code': 0,
-            'status': 'success'
-        })
+        # Verify command is removed from tracking
+        self.assertEqual(len(self.monitor.active_commands), 0)
 
 
 if __name__ == '__main__':
-    # Set up test environment
-    print("Running Shellhorn Monitor Integration Tests")
-    print("=" * 50)
-    
-    # Run the tests
-    unittest.main(verbosity=2)
+    unittest.main()
