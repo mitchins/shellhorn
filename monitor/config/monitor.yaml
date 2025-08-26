@@ -1,0 +1,58 @@
+# Shellhorn Monitor Configuration
+# Single config file with settings and secrets
+
+mqtt:
+  broker_host: "${MQTT_BROKER:-localhost}"
+  broker_port: 1883
+  topic_prefix: "shellhorn"
+
+monitoring:
+  timeout_minutes: 30
+  check_interval_seconds: 60
+  status_interval_seconds: 300
+  heartbeat_interval_seconds: 60    # How often to publish monitor status to MQTT
+
+# Notification preferences - control which events send alerts
+notifications:
+  # Event types that should trigger notifications
+  # start: Command started
+  # success: Command completed successfully  
+  # fail: Command completed with error/interrupt
+  # lost: Command never finished (orphaned/lost connection)
+  enabled_events:
+    start: false     # Usually too noisy for central monitoring
+    success: false   # Usually handled locally
+    fail: true       # Important failures
+    lost: true       # Critical - host disconnect/shutdown
+  
+  pushover:
+    enabled: true
+    priority:
+      start: 0       # Normal priority
+      success: 0     # Normal priority
+      fail: 1        # High priority
+      lost: 1        # High priority - visible but no retry (change to 2 for emergency)
+    
+    # Emergency notification settings (priority 2)
+    emergency:
+      retry: 60      # Retry every X seconds until acknowledged
+      expire: 3600   # Stop retrying after X seconds (1 hour)
+    
+    # Custom messages per event type
+    messages:
+      start: "🚀 Command started: {command}"
+      success: "✅ Command completed: {command}"
+      fail: "❌ Command failed: {command}"
+      lost: "🚨 Lost command detected: {command} (host may be down)"
+
+# Client configuration
+client_id: "shellhorn-monitor"
+
+# Secrets section - keep credentials here instead of separate file
+# You can also use environment variables as fallback
+secrets:
+  mqtt_username: "${MQTT_USERNAME:-}"
+  mqtt_password: "${MQTT_PASSWORD:-}"
+  pushover_token: "${PUSHOVER_TOKEN:-}"
+  pushover_user: "${PUSHOVER_USER:-}"
+  # pushover_device: "device_name"  # Optional: send to specific device only

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Integration tests for Conch Monitor using embedded MQTT broker.
+Integration tests for Shellhorn Monitor using embedded MQTT broker.
 """
 
 import json

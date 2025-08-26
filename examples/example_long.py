@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Long-running example script for testing conch interruption.
+Long-running example script for testing shellhorn interruption.
 """
 
 import time

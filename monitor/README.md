@@ -1,11 +1,11 @@
-# Conch Monitor 🐚👁️
+# Shellhorn Monitor 🐚📯
 
-A lightweight Docker service that monitors MQTT for orphaned conch commands and sends alerts when commands die unexpectedly.
+A lightweight Docker service that monitors MQTT for orphaned shellhorn commands and sends alerts when commands die unexpectedly.
 
 ## What It Does
 
-Conch Monitor solves the "when it dies unexpectedly" problem by:
-1. **Tracking active commands** - Listens for `conch/start` messages
+Shellhorn Monitor solves the "when it dies unexpectedly" problem by:
+1. **Tracking active commands** - Listens for `shellhorn/start` messages
 2. **Detecting orphans** - Commands that started but never reported completion
 3. **Sending alerts** - Pushover notifications when orphaned commands are detected
 
@@ -14,61 +14,153 @@ Conch Monitor solves the "when it dies unexpectedly" problem by:
 ### 1. Setup Configuration
 
 ```bash
-# Copy example files
-cp config/config.json.example config/config.json
-cp config/secrets.json.example config/secrets.json
-cp .env.example .env
+# Copy and customize the config file
+cp config/monitor.yaml config/monitor.yaml.local
 
-# Edit secrets (RECOMMENDED approach)
-nano config/secrets.json
+# Edit configuration (enable Pushover, add your credentials)
+nano config/monitor.yaml.local
 ```
 
-**config/secrets.json:**
-```json
-{
-  "mqtt_username": "your_mqtt_user",
-  "mqtt_password": "your_mqtt_pass", 
-  "pushover_token": "your_app_token",
-  "pushover_user": "your_user_key"
-}
+**monitor.yaml.local** (single config file):
+```yaml
+notifications:
+  enabled_events:
+    lost: true      # CRITICAL - host disconnects
+    fail: true      # Important failures
+    start: false    # Usually too noisy
+    success: false  # Handle locally
+  
+  pushover:
+    enabled: true   # ENABLE Pushover notifications
+    priority:
+      lost: 1       # High priority - visible but no retry (change to 2 for emergency)
+
+# Add your credentials here (or use environment variables)
+secrets:
+  pushover_token: "your_app_token_here"
+  pushover_user: "your_user_key_here"
+  # mqtt_username: "mqtt_user"        # Optional: MQTT auth
+  # mqtt_password: "mqtt_pass"        # Optional: MQTT auth
 ```
 
-### 2. Run with Docker Compose
+### 2. Run with Docker
 
+**Option A: Docker Compose (Recommended)**
 ```bash
-# Edit environment variables
+# Edit environment (MQTT broker, etc.)
 nano .env
 
-# Start the monitor
+# Start the monitor (mounts ./config to /config)
 docker-compose up -d
 
 # Check logs
-docker-compose logs -f conch-monitor
+docker-compose logs -f shellhorn-monitor
 ```
 
-### 3. Test It
+**Option B: Direct Docker Run**
+```bash
+# Run with volume binding for config
+docker run -d --name shellhorn-monitor \
+  -v "$(pwd)/config:/config:ro" \
+  -e MQTT_BROKER=192.168.1.100 \
+  shellhorn-monitor
+```
+
+### 3. Verify Setup
 
 ```bash
-# Start a command that will be "orphaned" (kill the process manually)
-conch sleep 300 &
+# Check monitor is running and config loaded
+docker-compose logs shellhorn-monitor
 
-# Kill the process (simulate crash)
-kill %1
+# Should show:
+# Loading configuration from /config/monitor.yaml
+# Secrets loaded from config (or environment variables)
+# Connected to MQTT broker successfully
+# Pushover enabled: true
 
-# Monitor will detect it as orphaned after timeout (default 30 minutes)
+# Test Pushover credentials (optional)
+python3 config/../test_notifications.py
 ```
 
-## Configuration Options
+### 4. Test Lost Command Detection
 
-### Timeouts
-- `CONCH_TIMEOUT_MINUTES=30` - How long before a command is considered orphaned
-- `CONCH_CHECK_INTERVAL=60` - How often to check for orphans (seconds)
-- `CONCH_STATUS_INTERVAL=300` - How often to log status (seconds)
+**Quick Test (90 seconds):**
+```bash
+# Automated test with short timeout - results in 90 seconds
+./quick_test.sh
+```
 
-### MQTT Settings
+**Manual Test:**
+```bash
+# Start a command and kill it manually
+shellhorn sleep 300 &
+kill %1
+# Monitor will detect it after the configured timeout
+```
+
+**Verify Results:**
+```bash
+# Universal verification via MQTT (works regardless of monitor location)
+mosquitto_sub -h YOUR_MQTT_BROKER -t "shellhorn/monitor/heartbeat" -v
+
+# Local Docker verification
+docker-compose logs --tail=20 shellhorn-monitor  
+
+# Should show:
+# "Lost command detected: sleep 1800 (host may be down)"
+# "Emergency Pushover alert sent"
+```
+
+## Configuration
+
+### YAML Configuration (Recommended)
+
+**Single config file:**
+- Path: `/config/monitor.yaml` 
+- Contains: Settings + secrets in one place
+
+**Docker volume binding:**
+- `./config:/config:ro` (docker-compose)
+- `-v $(pwd)/config:/config:ro` (docker run)
+
+**Complete monitor.yaml example:**
+
+```yaml
+mqtt:
+  broker_host: "${MQTT_BROKER:-localhost}"
+  broker_port: 1883
+  topic_prefix: "shellhorn"
+
+monitoring:
+  timeout_minutes: 30           # Orphan detection timeout
+  check_interval_seconds: 60    # How often to check for orphans
+  status_interval_seconds: 300  # Console logging frequency 
+  heartbeat_interval_seconds: 60 # MQTT heartbeat frequency
+
+notifications:
+  enabled_events:
+    start: false     # Command started (usually noisy)
+    success: false   # Command completed (handle locally) 
+    fail: true       # Command failed (important)
+    lost: true       # Command never finished (CRITICAL)
+  
+  pushover:
+    enabled: true
+    priority:
+      start: 0       # Normal priority
+      success: 0     # Normal priority  
+      fail: 1        # High priority - visible but no retry
+      lost: 1        # High priority - visible but no retry (change to 2 for emergency)
+    
+    messages:
+      lost: "🚨 Lost command: {command} (host may be down)"
+```
+
+### Environment Variables (Fallback)
 - `MQTT_BROKER=localhost` - MQTT broker hostname
-- `MQTT_PORT=1883` - MQTT broker port
-- `MQTT_TOPIC_PREFIX=conch` - Topic prefix to monitor
+- `SHELLHORN_TIMEOUT_MINUTES=30` - Orphan timeout
+- `SHELLHORN_CHECK_INTERVAL=60` - Check frequency (seconds)
+- `SHELLHORN_HEARTBEAT_INTERVAL=60` - MQTT heartbeat frequency (seconds)
 
 ## Security Best Practices
 
@@ -99,58 +191,125 @@ export PUSHOVER_USER=xyz789
 ```yaml
 # docker-compose.yml
 services:
-  conch-monitor:
+  shellhorn-monitor:
     environment:
       - MQTT_BROKER=mqtt.homelab.local
-      - CONCH_TIMEOUT_MINUTES=15  # Shorter timeout
+      - SHELLHORN_TIMEOUT_MINUTES=15  # Shorter timeout
 ```
 
 ### Production Setup
 ```yaml
 services:
-  conch-monitor:
+  shellhorn-monitor:
     environment:
       - MQTT_BROKER=mqtt.prod.company.com
-      - CONCH_TIMEOUT_MINUTES=60  # Longer timeout
-      - CONCH_CHECK_INTERVAL=30   # Check more frequently
+      - SHELLHORN_TIMEOUT_MINUTES=60  # Longer timeout
+      - SHELLHORN_CHECK_INTERVAL=30   # Check more frequently
 ```
 
 ### Multiple Environments
 ```bash
 # Different configs for different environments
-docker run -d --name conch-monitor-dev \
-  -v ./config-dev:/etc/conch-monitor:ro \
+docker run -d --name shellhorn-monitor-dev \
+  -v ./config-dev:/config:ro \
   -e MQTT_BROKER=mqtt-dev.local \
-  conch-monitor
+  shellhorn-monitor
 
-docker run -d --name conch-monitor-prod \
-  -v ./config-prod:/etc/conch-monitor:ro \
+docker run -d --name shellhorn-monitor-prod \
+  -v ./config-prod:/config:ro \
   -e MQTT_BROKER=mqtt-prod.local \
-  conch-monitor
+  shellhorn-monitor
 ```
 
-## MQTT Topics Monitored
+## MQTT Topics
 
-- `conch/start` - Command started (begins tracking)
-- `conch/complete` - Command finished successfully (stops tracking)
-- `conch/error` - Command had an error (stops tracking)  
-- `conch/interrupt` - Command was interrupted (stops tracking)
+### Monitored Topics
+- `shellhorn/start` - Command started → **start** event
+- `shellhorn/complete` - Command finished successfully → **success** event
+- `shellhorn/error` - Command had an error → **fail** event  
+- `shellhorn/interrupt` - Command was interrupted → **fail** event
 
-## Alert Message Format
+### Published Topics
+- `shellhorn/status` - Monitor online/offline status (retained will message)
+- `shellhorn/monitor/heartbeat` - Monitor health & active command status (configurable interval)
 
-When an orphaned command is detected:
-
+### Heartbeat Messages
+The monitor publishes heartbeat messages to `shellhorn/monitor/heartbeat`:
+```json
+{
+  "timestamp": "2025-08-26T01:53:05.123Z",
+  "active_commands": 1,
+  "uptime_seconds": 3600,
+  "monitor_id": "shellhorn-monitor",
+  "commands": [
+    {
+      "command": "sleep 3600",
+      "client_id": "shellhorn_1756173185.354534", 
+      "age_minutes": 25.2,
+      "start_time": "2025-08-26T01:28:05.123Z",
+      "pid": 12345
+    }
+  ]
+}
 ```
-🚨 Orphaned Command Detected
 
-Command: python3 train_model.py --epochs 100
-Client: laptop-123
+**Heartbeat Frequency Options:**
+- `heartbeat_interval_seconds: 30` - High frequency monitoring
+- `heartbeat_interval_seconds: 60` - Standard (recommended)
+- `heartbeat_interval_seconds: 300` - Low frequency (reduces MQTT traffic)
+
+**Notification Priority Levels:**
+- `priority: 0` - **Normal** - Quiet notification
+- `priority: 1` - **High** - Visible notification (default for lost commands)  
+- `priority: 2` - **Emergency** - Repeats every 60s until acknowledged (for critical systems)
+
+```yaml
+# For critical production systems that need emergency alerting:
+priority:
+  lost: 2        # Emergency - will retry every 60s for 1 hour
+
+# For most users (default):
+priority: 
+  lost: 1        # High priority - visible but won't bug you
+```
+
+### Lost Command Detection
+Commands that publish `start` but never publish `complete/error/interrupt` are detected as **lost** after the timeout period. This indicates the host likely disconnected or shut down unexpectedly.
+
+## Notification System
+
+### Event Types
+- **start**: Command begins (usually disabled - too noisy)
+- **success**: Command completes successfully (handle locally)
+- **fail**: Command fails or interrupted (important for debugging)
+- **lost**: Command never finishes (CRITICAL - indicates host issues)
+
+### Smart Defaults
+The monitor uses intelligent defaults:
+- **Local events** (start/success): Disabled for central monitoring
+- **Important events** (fail): High priority notifications
+- **Critical events** (lost): High priority notifications (emergency available)
+
+### Alert Examples
+
+**Lost Command (High Priority)**:
+```
+🚨 Lost command detected: backup_database.sh (host may be down)
+
+Client: server-01
 Started: 2024-08-24 14:30:15
 Age: 45.2 minutes
 PID: 12345
 
-This command started but never reported completion.
-The process may have crashed or the machine may be unreachable.
+Host may have disconnected or shut down unexpectedly.
+```
+
+**Failed Command (High Priority)**:
+```
+❌ Command failed: deploy_app.sh
+
+Duration: 12.4s
+Client: ci-runner-03
 ```
 
 ## Troubleshooting
@@ -158,7 +317,7 @@ The process may have crashed or the machine may be unreachable.
 ### Check MQTT Connection
 ```bash
 # Test MQTT connectivity from container
-docker exec conch-monitor python -c "
+docker exec shellhorn-monitor python -c "
 import socket
 s = socket.socket()
 s.settimeout(5)
@@ -170,7 +329,7 @@ print('MQTT OK' if result == 0 else 'MQTT FAILED')
 ### Debug Logging
 ```bash
 # Enable debug logging
-docker-compose exec conch-monitor python -c "
+docker-compose exec shellhorn-monitor python -c "
 import logging
 logging.basicConfig(level=logging.DEBUG)
 "
@@ -179,7 +338,7 @@ logging.basicConfig(level=logging.DEBUG)
 ### Manual Testing
 ```bash
 # Send test MQTT message
-mosquitto_pub -h localhost -t conch/start -m '{
+mosquitto_pub -h localhost -t shellhorn/start -m '{
   "command": "test-command", 
   "client_id": "test-client",
   "timestamp": "2024-08-24T14:30:00",
@@ -193,5 +352,20 @@ mosquitto_pub -h localhost -t conch/start -m '{
 - **CPU**: ~0.05% typical, 0.1% limit  
 - **Network**: Minimal (MQTT messages only)
 - **Storage**: Stateless (no persistence needed)
+
+## Advanced Features
+
+### Connection Resilience
+- **MQTT v2 API** - No deprecation warnings
+- **Smart reconnection** - Exponential backoff (1-30s)
+- **Will messages** - Publishes offline status on disconnect
+- **Session persistence** - Maintains subscriptions across reconnects
+- **Clean disconnect detection** - No false alarms when publishers disconnect normally
+
+### Notification Intelligence
+- **Event filtering** - Only notify on enabled event types
+- **Priority levels** - Different urgency for different events
+- **Custom messages** - Template-based notifications
+- **Emergency alerts** - Auto-retry for critical lost commands
 
 Perfect for running alongside other services in resource-constrained environments like Raspberry Pi or small VPS instances.

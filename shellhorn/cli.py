@@ -1,5 +1,5 @@
 """
-Command-line interface for conch.
+Command-line interface for shellhorn.
 """
 
 import sys
@@ -25,7 +25,7 @@ def create_argument_parser():
     parser.add_argument('--pushover-device', help='Pushover device name')
     parser.add_argument('--mqtt-broker', help='MQTT broker host')
     parser.add_argument('--mqtt-port', type=int, default=1883, help='MQTT broker port')
-    parser.add_argument('--mqtt-topic', default='conch', help='MQTT topic prefix')
+    parser.add_argument('--mqtt-topic', default='shellhorn', help='MQTT topic prefix')
     parser.add_argument('--mqtt-username', help='MQTT username')
     parser.add_argument('--mqtt-password', help='MQTT password')
     parser.add_argument('--console-notifications', action='store_true', 
@@ -124,7 +124,7 @@ def main():
     options_end = len(sys.argv)
     for i, arg in enumerate(sys.argv[1:], 1):
         if not arg.startswith('-'):
-            # Check if this is a known conch subcommand
+            # Check if this is a known shellhorn subcommand
             if arg in ['config', 'version']:
                 break
             options_end = i

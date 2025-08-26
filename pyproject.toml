@@ -40,7 +40,6 @@ Issues = "https://github.com/mitchellcurrie/shellhorn/issues"
 
 [project.scripts]
 shellhorn = "shellhorn.cli:main"
-conch = "shellhorn.cli:main"
 
 [project.optional-dependencies]
 dev = [

@@ -1,0 +1,43 @@
+# Shellhorn Monitor Configuration Example
+# Copy this to monitor.yaml and customize for your setup
+
+mqtt:
+  broker_host: "192.168.1.100"  # Your MQTT broker IP
+  broker_port: 1883
+  topic_prefix: "shellhorn"
+
+monitoring:
+  timeout_minutes: 30             # How long before command is considered lost
+  check_interval_seconds: 60      # How often to check for orphans
+  status_interval_seconds: 300    # How often to log status (console)
+  heartbeat_interval_seconds: 60  # How often to publish status to MQTT
+
+notifications:
+  enabled_events:
+    start: false     # Usually too noisy for central monitoring
+    success: false   # Usually handled locally  
+    fail: true       # Important - command failures
+    lost: true       # CRITICAL - host disconnects/shutdowns
+  
+  pushover:
+    enabled: true    # Set to false to disable Pushover
+    priority:
+      start: 0       # Normal priority
+      success: 0     # Normal priority
+      fail: 1        # High priority
+      lost: 1        # High priority - visible but no retry (change to 2 for emergency)
+    
+    # Emergency notification settings (priority 2)
+    emergency:
+      retry: 60      # Retry every X seconds until acknowledged
+      expire: 3600   # Stop retrying after X seconds (1 hour)
+
+client_id: "shellhorn-monitor"
+
+# Your credentials - fill these in or use environment variables
+secrets:
+  pushover_token: "YOUR_PUSHOVER_APP_TOKEN"
+  pushover_user: "YOUR_PUSHOVER_USER_KEY"
+  # pushover_device: "phone"               # Optional: send to specific device (default: all devices)
+  # mqtt_username: "mqtt_user"             # Optional: MQTT authentication
+  # mqtt_password: "mqtt_pass"             # Optional: MQTT authentication

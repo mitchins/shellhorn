@@ -1,5 +1,5 @@
 """
-Configuration management for conch.
+Configuration management for shellhorn.
 """
 
 import os
@@ -10,7 +10,7 @@ from .notifiers import PushoverNotifier, MQTTNotifier, ConsoleNotifier
 
 
 class Config:
-    """Manages conch configuration."""
+    """Manages shellhorn configuration."""
     
     def __init__(self, config_path: Optional[str] = None):
         self.config_path = config_path or self._get_default_config_path()
@@ -19,7 +19,7 @@ class Config:
     def _get_default_config_path(self) -> str:
         """Get the default configuration file path."""
         home = Path.home()
-        config_dir = home / ".config" / "conch"
+        config_dir = home / ".config" / "shellhorn"
         config_dir.mkdir(parents=True, exist_ok=True)
         return str(config_dir / "config.json")
     
@@ -118,7 +118,7 @@ class Config:
         }
     
     def set_mqtt(self, broker_host: str, broker_port: int = 1883, 
-                 topic_prefix: str = "conch", username: Optional[str] = None,
+                 topic_prefix: str = "shellhorn", username: Optional[str] = None,
                  password: Optional[str] = None, enabled: bool = True):
         """Configure MQTT notifications."""
         self._config["notifications"]["mqtt"] = {

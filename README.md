@@ -3,6 +3,7 @@
 **Get phone notifications when your long-running shell commands finish.** Perfect for ML training, builds, or any command you don't want to babysit.
 
 ```bash
+# Install
 pip install shellhorn
 
 # Just prepend any command
@@ -38,8 +39,6 @@ shellhorn ./deploy-script.sh
 shellhorn python3 -m pytest --long-running-tests
 shellhorn npm run build
 
-# Short alias
-conch python3 script.py
 ```
 
 **What you get:**
@@ -102,6 +101,26 @@ shellhorn config set preferences.notify_success false # Disable success notifica
   "client_id": "shellhorn_123456789"
 }
 ```
+</details>
+
+<details>
+<summary><b>Monitor (Centralized Alerts)</b></summary>
+
+Deploy the monitor to get alerts when hosts disconnect unexpectedly:
+
+```bash
+# Quick start with Docker
+docker run -d --name shellhorn-monitor \
+  -e MQTT_BROKER=192.168.1.100 \
+  -e PUSHOVER_TOKEN=xxx -e PUSHOVER_USER=yyy \
+  shellhorn-monitor
+
+# Or with config file (YAML)
+docker run -d -v ./monitor.yaml:/config/monitor.yaml \
+  shellhorn-monitor
+```
+
+**Perfect for detecting lost commands** when machines shut down or disconnect. See `monitor/` directory for full setup.
 </details>
 
 ---

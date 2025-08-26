@@ -15,9 +15,9 @@ services:
       - SHELLHORN_CHECK_INTERVAL=${SHELLHORN_CHECK_INTERVAL:-60}
       - SHELLHORN_STATUS_INTERVAL=${SHELLHORN_STATUS_INTERVAL:-300}
     
-    # Mount secrets file (recommended approach)
+    # Mount config directory (recommended approach)
     volumes:
-      - ./config:/etc/shellhorn-monitor:ro
+      - ./config:/config:ro
     
     # Health check
     healthcheck:

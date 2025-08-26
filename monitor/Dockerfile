@@ -14,8 +14,8 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt && \
     rm /tmp/requirements.txt
 
 # Create directories
-RUN mkdir -p /etc/shellhorn-monitor /app && \
-    chown -R shellhorn:shellhorn /etc/shellhorn-monitor /app
+RUN mkdir -p /config /app && \
+    chown -R shellhorn:shellhorn /config /app
 
 # Copy application
 COPY shellhorn_monitor.py /app/

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Simple example script for testing conch.
+Simple example script for testing shellhorn.
 """
 
 import time

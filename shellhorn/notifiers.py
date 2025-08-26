@@ -68,7 +68,7 @@ class MQTTNotifier(BaseNotifier):
     """Publishes command status to MQTT for centralized monitoring."""
     
     def __init__(self, broker_host: str, broker_port: int = 1883, 
-                 topic_prefix: str = "conch", username: Optional[str] = None,
+                 topic_prefix: str = "shellhorn", username: Optional[str] = None,
                  password: Optional[str] = None, client_id: Optional[str] = None):
         self.broker_host = broker_host
         self.broker_port = broker_port
