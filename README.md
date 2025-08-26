@@ -2,6 +2,13 @@
 
 **Get phone notifications when your long-running shell commands finish.** Perfect for ML training, builds, or any command you don't want to babysit.
 
+[![CI](https://github.com/mitchins/shellhorn/actions/workflows/ci.yml/badge.svg)](https://github.com/mitchins/shellhorn/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/github/mitchins/shellhorn/graph/badge.svg?token=SHELLHORN_CODECOV_TOKEN)](https://codecov.io/github/mitchins/shellhorn)
+[![PyPI version](https://badge.fury.io/py/shellhorn.svg)](https://badge.fury.io/py/shellhorn)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 ```bash
 # Install
 pip install shellhorn

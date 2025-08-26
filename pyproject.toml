@@ -33,9 +33,9 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/mitchellcurrie/shellhorn"
-Repository = "https://github.com/mitchellcurrie/shellhorn"
-Issues = "https://github.com/mitchellcurrie/shellhorn/issues"
+Homepage = "https://github.com/mitchins/shellhorn"
+Repository = "https://github.com/mitchins/shellhorn"
+Issues = "https://github.com/mitchins/shellhorn/issues"
 
 [project.scripts]
 shellhorn = "shellhorn.cli:main"
