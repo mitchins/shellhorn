@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "shellhorn"
-version = "0.2.0"
+version = "1.0.0"
 description = "🐚📯 A lightweight command wrapper that sounds the horn when your shell commands complete, fail, or die unexpectedly"
 authors = [{name = "Mitchell Currie"}]
 license = {text = "MIT"}
@@ -17,7 +17,7 @@ dependencies = [
 ]
 keywords = ["shell", "command", "wrapper", "notification", "monitoring", "mqtt", "pushover"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
     "Intended Audience :: Developers", 
     "Intended Audience :: System Administrators",

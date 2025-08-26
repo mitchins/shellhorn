@@ -563,7 +563,7 @@ def load_config() -> Dict[str, Any]:
                 }
             }
         },
-        'client_id': os.getenv('SHELLHORN_CLIENT_ID'),
+        'client_id': os.getenv('SHELLHORN_CLIENT_ID', f'shellhorn-monitor-{int(time.time())}'),
         'secrets_file': os.getenv('SHELLHORN_SECRETS_FILE')  # Legacy support only
     }
 

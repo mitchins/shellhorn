@@ -5,6 +5,7 @@
 [![CI](https://github.com/mitchins/shellhorn/actions/workflows/ci.yml/badge.svg)](https://github.com/mitchins/shellhorn/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/github/mitchins/shellhorn/graph/badge.svg?token=SHELLHORN_CODECOV_TOKEN)](https://codecov.io/github/mitchins/shellhorn)
 [![PyPI version](https://badge.fury.io/py/shellhorn.svg)](https://badge.fury.io/py/shellhorn)
+[![Docker](https://img.shields.io/badge/docker-ghcr.io-blue.svg)](https://ghcr.io/mitchins/shellhorn/monitor)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
@@ -116,15 +117,15 @@ shellhorn config set preferences.notify_success false # Disable success notifica
 Deploy the monitor to get alerts when hosts disconnect unexpectedly:
 
 ```bash
-# Quick start with Docker
+# Quick start with Docker (from GitHub Container Registry)
 docker run -d --name shellhorn-monitor \
   -e MQTT_BROKER=192.168.1.100 \
   -e PUSHOVER_TOKEN=xxx -e PUSHOVER_USER=yyy \
-  shellhorn-monitor
+  ghcr.io/mitchins/shellhorn/monitor:latest
 
 # Or with config file (YAML)
 docker run -d -v ./monitor.yaml:/config/monitor.yaml \
-  shellhorn-monitor
+  ghcr.io/mitchins/shellhorn/monitor:latest
 ```
 
 **Perfect for detecting lost commands** when machines shut down or disconnect. See `monitor/` directory for full setup.

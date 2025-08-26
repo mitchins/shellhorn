@@ -46,24 +46,28 @@ secrets:
 ### 2. Run with Docker
 
 **Option A: Docker Compose (Recommended)**
+
+*Use prebuilt image from GHCR:*
 ```bash
-# Edit environment (MQTT broker, etc.)
-nano .env
+nano .env  # Edit environment (MQTT broker, etc.)
+docker-compose -f docker-compose.ghcr.yml up -d
+docker-compose -f docker-compose.ghcr.yml logs -f shellhorn-monitor
+```
 
-# Start the monitor (mounts ./config to /config)
-docker-compose up -d
-
-# Check logs
+*Or build locally:*
+```bash
+nano .env  # Edit environment (MQTT broker, etc.)
+docker-compose up -d  # builds from Dockerfile
 docker-compose logs -f shellhorn-monitor
 ```
 
-**Option B: Direct Docker Run**
+**Option B: Direct Docker Run (GitHub Container Registry)**
 ```bash
 # Run with volume binding for config
 docker run -d --name shellhorn-monitor \
   -v "$(pwd)/config:/config:ro" \
   -e MQTT_BROKER=192.168.1.100 \
-  shellhorn-monitor
+  ghcr.io/mitchins/shellhorn/monitor:latest
 ```
 
 ### 3. Verify Setup
@@ -213,12 +217,12 @@ services:
 docker run -d --name shellhorn-monitor-dev \
   -v ./config-dev:/config:ro \
   -e MQTT_BROKER=mqtt-dev.local \
-  shellhorn-monitor
+  ghcr.io/mitchins/shellhorn/monitor:latest
 
 docker run -d --name shellhorn-monitor-prod \
   -v ./config-prod:/config:ro \
   -e MQTT_BROKER=mqtt-prod.local \
-  shellhorn-monitor
+  ghcr.io/mitchins/shellhorn/monitor:latest
 ```
 
 ## MQTT Topics
