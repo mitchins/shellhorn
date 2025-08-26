@@ -96,6 +96,18 @@ class MockMQTTClient:
         """Mock username/password setting."""
         pass
     
+    def reconnect_delay_set(self, min_delay, max_delay):
+        """Mock reconnect delay setting."""
+        pass
+    
+    def will_set(self, topic, payload, qos=0, retain=False):
+        """Mock will message setting."""
+        pass
+    
+    def publish(self, topic, payload, qos=0, retain=False):
+        """Mock publish."""
+        return MagicMock()
+    
     def connect(self, host, port, keepalive):
         """Mock connection."""
         self.connected = True
@@ -157,7 +169,10 @@ class TestShellhornMonitorIntegration(unittest.TestCase):
         
         # Mock MQTT client creation
         self.original_mqtt_client = mqtt.Client
-        mqtt.Client = lambda client_id: MockMQTTClient(self.broker, client_id)
+        mqtt.Client = lambda *args, **kwargs: MockMQTTClient(
+            self.broker, 
+            kwargs.get('client_id', args[1] if len(args) > 1 else 'test-client')
+        )
         
         self.monitor = ShellhornMonitor(self.config)
     
